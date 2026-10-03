@@ -1,0 +1,123 @@
+{
+  "project_name": "LotNeeti - Smart IPO Planning & Cross-UPI Multi-Account Operations Tool",
+  "app_type": "fintech_dashboard",
+  "archetype": "THE PERFORMANCE PRO (Tactical Fintech & Data Command)",
+  "theme": {
+    "default_mode": "dark",
+    "background": "hsl(222, 47%, 7%)",
+    "surface": "hsl(222, 40%, 10%)",
+    "surface_hover": "hsl(222, 35%, 14%)",
+    "border": "hsl(222, 25%, 18%)",
+    "primary": "hsl(158, 85%, 42%)",
+    "primary_hover": "hsl(158, 85%, 36%)",
+    "primary_foreground": "hsl(222, 47%, 7%)",
+    "accent_gold": "hsl(45, 93%, 58%)",
+    "accent_blue": "hsl(217, 91%, 60%)",
+    "destructive": "hsl(0, 84%, 60%)",
+    "success": "hsl(158, 85%, 42%)",
+    "warning": "hsl(38, 92%, 50%)",
+    "muted_text": "hsl(215, 20%, 65%)",
+    "heading_text": "hsl(210, 40%, 98%)",
+    "card_bg": "rgba(15, 23, 42, 0.75)",
+    "glass_border": "rgba(255, 255, 255, 0.08)",
+    "rules": [
+      "Never use pure #000000; use rich deep slate-indigo #090D16 for background",
+      "Reserve positive green (hsl(158, 85%, 42%)) strictly for gains, GMP, and active allotment success",
+      "Reserve warning amber/yellow for pending UPI mandates and limit threshold warnings",
+      "Never use gradient blanket overlays on hero images or main content surfaces",
+      "Ensure all card borders have subtle contrast (1px solid border-white/10)"
+    ]
+  },
+  "typography": {
+    "headings_font": "Outfit, sans-serif",
+    "body_font": "Inter, sans-serif",
+    "mono_font": "JetBrains Mono, monospace",
+    "google_fonts_url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap",
+    "hierarchy": {
+      "h1": "text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white",
+      "h2": "text-2xl sm:text-3xl font-bold tracking-tight text-white",
+      "h3": "text-xl sm:text-2xl font-semibold text-white",
+      "h4": "text-lg font-semibold text-slate-200",
+      "body": "text-sm text-slate-300 leading-relaxed",
+      "body_small": "text-xs text-slate-400",
+      "tabular_number": "font-mono font-medium tracking-wide text-slate-100"
+    }
+  },
+  "layout_and_spacing": {
+    "dashboard_grid": "MODE B: High Density Grid (col-span-1 for stats, col-span-2 or 3 for primary tables and charts)",
+    "container_padding": "p-4 sm:p-6 lg:p-8",
+    "card_padding": "p-5 sm:p-6",
+    "gap_standard": "gap-4 sm:gap-6",
+    "header": "Sticky glassmorphism header with z-50 backdrop-blur-md bg-slate-950/80 border-b border-white/10"
+  },
+  "key_features_to_implement": [
+    {
+      "name": "Auth Screen",
+      "description": "JWT Email & Password Login / Register tabbed view with stock market background aesthetic and pre-filled quick demo credentials button."
+    },
+    {
+      "name": "Command Dashboard",
+      "description": "KPI cards showing Total Capital, Blocked Funds, Available Liquidity, Total UPI Mandate Limit (₹5L/UPI), Active IPOs count, and Quick Cross-UPI Auto Allocator launcher."
+    },
+    {
+      "name": "Investor Profiles Hub",
+      "description": "Manage Family & Friends investors with PAN numbers, Demat type (CDSL/NSDL), 16-digit Demat Account number, default bidding category (Retail/sHNI/bHNI), and active application status."
+    },
+    {
+      "name": "Banks & Cross-UPI Manager",
+      "description": "Bank account listing, available balance, linked UPI handles, active applications counter (max 5 apps per UPI handle rule), and per-UPI mandate total limit tracker (max ₹5,00,000 per UPI)."
+    },
+    {
+      "name": "IPO Directory Cards & Filter",
+      "description": "Live tabbed catalog of Open, Upcoming, and Closed IPOs featuring Issue Price, Price Band, Lot Size, Quota percentages, Live GMP (Grey Market Premium ₹ & %), Bidding dates, and Subscription Multiples."
+    },
+    {
+      "name": "Smart Cross-UPI IPO Planner",
+      "description": "Pick open IPOs, choose target application count & category per investor, auto-calculate lot requirement, auto-assign bank balance & UPI handle according to rules, preview allocation table, and lock plan."
+    },
+    {
+      "name": "Applications Tracker & Excel Export",
+      "description": "Comprehensive tracking table for all placed applications across investors and UPIs. Shows Mandate Status (Pending/Accepted), Allotment Status (Allotted/Not Allotted/Refund Initiated), and 'Export Excel for IPO Premium App' button."
+    },
+    {
+      "name": "Funds & Mandates Monitor",
+      "description": "Visual breakdown of blocked money across banks, active UPI mandate health gauge, and fund release timeline."
+    }
+  ],
+  "image_urls": {
+    "stock_market_trading": "https://images.pexels.com/photos/17781649/pexels-photo-17781649.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    "financial_graph": "https://images.pexels.com/photos/39662688/pexels-photo-39662688.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    "bse_landmark": "https://images.unsplash.com/photo-1743712578499-7266d3d89dc3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHwxfHxzdG9jayUyMG1hcmtldCUyMGZpbmFuY2UlMjBpbnZlc3RpbmclMjBncmFwaCUyMGluZGlhbiUyMHRyYWRlcnxlbnwwfHx8fDE3OTEwMzQzMTB8MA&ixlib=rb-4.1.0&q=85",
+    "rupee_notes": "https://images.unsplash.com/photo-1565374392032-8007fb37c26e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHw0fHxzdG9jayUyMG1hcmtldCUyMGZpbmFuY2UlMjBpbnZlc3RpbmclMjBncmFwaCUyMGluZGlhbiUyMHRyYWRlcnxlbnwwfHx8fDE3OTEwMzQzMTB8MA&ixlib=rb-4.1.0&q=85"
+  },
+  "testing_requirements": {
+    "data_testid_rule": "MUST add data-testid attribute on all buttons, links, inputs, tables, select dropdowns, modals, and metric elements.",
+    "examples": [
+      "data-testid=\"nav-dashboard-link\"",
+      "data-testid=\"nav-investors-link\"",
+      "data-testid=\"nav-banks-upi-link\"",
+      "data-testid=\"nav-ipo-list-link\"",
+      "data-testid=\"nav-planner-link\"",
+      "data-testid=\"nav-applications-link\"",
+      "data-testid=\"nav-funds-link\"",
+      "data-testid=\"login-email-input\"",
+      "data-testid=\"login-password-input\"",
+      "data-testid=\"login-submit-button\"",
+      "data-testid=\"add-investor-button\"",
+      "data-testid=\"add-bank-upi-button\"",
+      "data-testid=\"auto-allocate-button\"",
+      "data-testid=\"export-excel-button\"",
+      "data-testid=\"metric-total-capital\"",
+      "data-testid=\"metric-blocked-funds\"",
+      "data-testid=\"metric-available-liquidity\""
+    ]
+  },
+  "universal_guidelines": [
+    "Do not use transparent background on dropdowns, select options, popovers, or navigation bars.",
+    "Ensure numbers and monetary values use tabular digits (font-mono) and right alignment in tables.",
+    "Always display Indian currency formatting (₹, Lakhs, Crores) for readability.",
+    "Use Lucide icons for high quality, vector fidelity.",
+    "Use sonner for notifications and toasts.",
+    "All React code should be in .js files as configured in the project."
+  ]
+}
