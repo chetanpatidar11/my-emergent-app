@@ -14,8 +14,8 @@ export function Page({ children }) {
   return <div className="p-4 sm:p-6 lg:p-8 max-w-[1500px] mx-auto fade-up">{children}</div>;
 }
 
-export function Card({ children, className = "" }) {
-  return <div className={`card-glass rounded-xl p-5 sm:p-6 ${className}`}>{children}</div>;
+export function Card({ children, className = "", ...rest }) {
+  return <div className={`card-glass rounded-xl p-5 sm:p-6 ${className}`} {...rest}>{children}</div>;
 }
 
 export function Btn({ children, variant = "primary", className = "", ...p }) {

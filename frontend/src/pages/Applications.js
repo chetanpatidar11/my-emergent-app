@@ -34,7 +34,7 @@ export default function Applications() {
     try {
       const { data } = await api.put("/applications/bulk/status", { ids: [...sel], [field]: value });
       toast.success(`Updated ${data.updated} application(s)`);
-      setBulkMand(""); setBulkAllot("");
+      setBulkMand(""); setBulkAllot(""); clearSel();
       load();
     } catch (e) { toast.error(errMsg(e.response?.data?.detail) || "Bulk update failed"); }
   };

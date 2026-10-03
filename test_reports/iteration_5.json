@@ -1,0 +1,37 @@
+{
+  "summary": "End-to-end tested LotNeeti bulk Applications feature (bulk mandate update, bulk allotment update, bulk delete + regressions). Backend: 10/10 pytest cases pass in test_applications_bulk.py (PUT /api/applications/bulk/status returns {updated} with mandate+allotment fields, POST /api/applications/bulk/delete returns {deleted}, literal /bulk routes are NOT shadowed by /applications/{aid}/status or /applications/{aid}, single-row inline update + delete still work, both bulk routes require auth, empty-ids -> 400). Auth bearer regression (test_auth_bearer.py) 6/6 pass. Frontend Playwright: select-all-checkbox shows bulk-action-bar with '3 selected', clear-selection-button hides it, individual select-app-<id> toggles work, bulk-accept-button -> toast 'Updated 2', bulk-mandate-select / bulk-allotment-select dropdowns fire updates, bulk-not-allotted-button / bulk-refund-button work (verified via GET /api/applications showing mandate_status=ACCEPTED, allotment_status=REFUND_INITIATED on both rows), inline mandate select on 3rd row persists (ACCEPTED), bulk-delete-button -> toast 'Deleted 2' and rows drop from 3 to 1, single-row delete-app-<id> works, Export Excel downloads ipo_applications.xlsx.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Applications bulk-action-bar", "issues": ["After a bulk mandate/allotment update, the selection (sel Set) is NOT cleared — only bulkMand/bulkAllot are reset. Users would expect selection to clear (as it does after bulk delete). Minor UX inconsistency; low priority."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_applications_bulk.py",
+    "/app/backend/tests/test_auth_bearer.py",
+    "/app/test_reports/pytest/applications_bulk.xml"
+  ],
+  "action_items": [
+    "(DONE by T1) Fixed /app/frontend/src/components/kit.js — Card component now spreads extra props so data-testid=\"bulk-action-bar\" on the Card actually reaches the DOM. Without this, the entire bulk-action-bar selector required by the review-request was missing from the rendered DOM (only its children had test ids). Also benefits any other Card with data-testid.",
+    "(Optional UX) In Applications.js applyBulk(), consider calling clearSel() after a successful bulk update (mirrors bulkDelete) so the selection UI resets after each operation."
+  ],
+  "critical_code_review_comments": [
+    "Card component in kit.js previously dropped unknown props (data-testid, aria-*, onClick etc.). This is a general testability/accessibility bug; patched to forward {...rest}.",
+    "Applications.js applyBulk does not clear selection after success — bulkDelete does. Minor inconsistency.",
+    "Backend bulk endpoints correctly placed above /applications/{aid}/status and /applications/{aid} and are scoped by user_id. update_many/delete_many used correctly. No ObjectId leakage (uses projection {_id:0} elsewhere; bulk routes return only counts).",
+    "Pydantic model missing for bulk request bodies — uses raw dict. Works but adds fragility; consider BulkStatusIn / BulkDeleteIn models for validation and OpenAPI docs."
+  ],
+  "updated_files": [
+    "/app/frontend/src/components/kit.js",
+    "/app/backend/tests/test_applications_bulk.py"
+  ],
+  "success_rate": {"backend": "100% (10/10 bulk + 6/6 auth regression)", "frontend": "100% (13/13 UI steps)"},
+  "test_credentials": "admin@lotneeti.com / admin123 (seeded; tests use freshly registered isolated users for deterministic counts).",
+  "seed_data_creation": "Fresh user per test module. Seeds 1 investor + 1 bank + commits a 3-row plan against the first 3 OPEN IPOs. All data isolated per user_id; no cleanup required.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Bulk Applications feature fully verified. Backend: PUT /api/applications/bulk/status {ids,mandate_status?,allotment_status?} -> {updated}; POST /api/applications/bulk/delete {ids} -> {deleted}. Route order in server.py L616/631 (above dynamic /applications/{aid} routes) prevents shadowing. Frontend uses Set-based selection in /app/frontend/src/pages/Applications.js. IMPORTANT: Card component in /app/frontend/src/components/kit.js was fixed to spread {...rest} — if any new Card instances in the codebase rely on data-testid or event handlers, they will NOW work. Reusable tests at /app/backend/tests/test_applications_bulk.py.",
+  "rca of the issue": "Observed during UI testing: Playwright timed out waiting for [data-testid=\"bulk-action-bar\"] even though the visual screenshot clearly showed the '3 selected' bar on screen. Root cause: in /app/frontend/src/components/kit.js, the Card component destructured only {children, className} and did NOT spread the remaining props onto its root <div>. Therefore the data-testid prop (and any other arbitrary attribute like aria-*) applied in JSX was silently dropped. Reproduction: before fix, `document.querySelector('[data-testid=\"bulk-action-bar\"]')` returned null while the bar was visually rendered. Fix: changed Card signature to `({children, className='', ...rest})` and spread `{...rest}` on the <div>. After fix, selector resolves and all 13 UI steps pass. Mitigation: consider adopting a lint rule or React.forwardRef pattern across kit components to always forward unknown DOM props."
+}
