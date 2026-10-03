@@ -6,12 +6,16 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 import io
+import re
+import html
 import uuid
+import asyncio
 import logging
 from datetime import datetime, timezone, timedelta, date
 
 import bcrypt
 import jwt
+import requests
 from bson import ObjectId
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends
 from fastapi.responses import StreamingResponse
@@ -278,6 +282,84 @@ async def list_ipos(user: dict = Depends(get_current_user)):
     return rows
 
 
+_STATUS_MAP = {"O": "OPEN", "U": "UPCOMING", "C": "CLOSED", "LP": "LISTED", "LN": "LISTED", "L": "LISTED"}
+_TAG = re.compile(r"<[^>]+>")
+
+
+def _ig_url() -> str:
+    now = datetime.now()
+    m, y = now.month, now.year
+    fs = y if m >= 4 else y - 1
+    fy = f"{fs}-{str(fs + 1)[-2:]}"
+    return (f"https://webnodejs.investorgain.com/cloud/v2/report/data-read/331/"
+            f"1/{m}/{y}/{fy}/0/all?search=&r2&v=15-18")
+
+
+def _parse_price(s: str):
+    nums = [float(x) for x in re.findall(r"\d+\.?\d*", s or "") if x]
+    if not nums:
+        return 0.0, 0.0
+    return (nums[0], nums[1]) if len(nums) >= 2 else (nums[0], nums[0])
+
+
+def _fetch_ig():
+    r = requests.get(_ig_url(), timeout=20, headers={
+        "Accept": "application/json", "Origin": "https://www.investorgain.com",
+        "Referer": "https://www.investorgain.com/", "User-Agent": "Mozilla/5.0 LotNeeti/1.0"})
+    r.raise_for_status()
+    return r.json().get("reportTableData", [])
+
+
+async def sync_live_ipos() -> int:
+    """Fetch live IPOs + GMP + subscription from InvestorGain and replace the catalog."""
+    rows = await asyncio.to_thread(_fetch_ig)
+    docs = []
+    for row in rows:
+        name = html.unescape(row.get("~ipo_name", "")).strip()
+        if not name:
+            continue
+        lo, hi = _parse_price(str(row.get("Price (₹)", "")))
+        lot = int(re.sub(r"[^\d]", "", str(row.get("Lot", "0"))) or 0)
+        try:
+            gmp = float(row.get("~max_gmp1") or 0)
+        except (TypeError, ValueError):
+            gmp = 0.0
+        try:
+            gmp_pct = float(row.get("~gmp_percent_calc") or 0)
+        except (TypeError, ValueError):
+            gmp_pct = 0.0
+        sub = html.unescape(_TAG.sub("", str(row.get("Sub", "") or "")).strip()) or "-"
+        updated = html.unescape(_TAG.sub("", str(row.get("Updated-On", "") or "")).strip())
+        cat = row.get("~IPO_Category", "")
+        src_id = str(row.get("~id", ""))
+        docs.append({
+            "id": f"ig-{src_id}", "issuer_name": name, "symbol": "",
+            "issue_type": "SME" if cat == "SME" else "MAINBOARD",
+            "lower_price": lo, "upper_price": hi, "lot_size": lot,
+            "open_date": row.get("~Srt_Open", "") or "", "close_date": row.get("~Srt_Close", "") or "",
+            "allotment_date": row.get("~Srt_BoA_Dt", "") or "", "listing_date": row.get("~Str_Listing", "") or "",
+            "status": _STATUS_MAP.get(row.get("~ipo_status1", ""), "CLOSED"),
+            "gmp": gmp, "gmp_pct": gmp_pct, "subscription": sub,
+            "source": "investorgain", "source_id": src_id, "updated_on": updated,
+        })
+    if not docs:
+        return 0
+    await db.ipos.delete_many({})
+    await db.ipos.insert_many(docs)
+    logger.info("synced %d live IPOs", len(docs))
+    return len(docs)
+
+
+@api.post("/ipos/refresh")
+async def refresh_ipos(user: dict = Depends(get_current_user)):
+    try:
+        n = await sync_live_ipos()
+        return {"synced": n, "ok": True}
+    except Exception as exc:
+        logger.warning("live IPO sync failed: %s", exc)
+        raise HTTPException(502, "Live GMP source is unavailable right now. Try again shortly.")
+
+
 # ---------- planner ----------
 def amount_per_app(ipo: dict, lots: int) -> float:
     return lots * int(ipo["lot_size"]) * float(ipo["upper_price"])
@@ -524,8 +606,16 @@ async def startup():
                 "open_date": od.isoformat(), "close_date": cd.isoformat(),
                 "allotment_date": ad.isoformat(), "listing_date": ld.isoformat(),
                 "status": status, "gmp": gmp,
-                "gmp_pct": round(gmp / hi * 100, 1), "retail_quota": 35, "shni_quota": 15,
+                "gmp_pct": round(gmp / hi * 100, 1), "subscription": "-", "source": "seed",
             })
+
+    async def _bg_sync():
+        try:
+            await sync_live_ipos()
+        except Exception as exc:
+            logger.warning("startup live IPO sync skipped: %s", exc)
+
+    asyncio.create_task(_bg_sync())
     logger.info("startup complete")
 
 
