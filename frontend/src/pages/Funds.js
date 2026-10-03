@@ -5,7 +5,7 @@ import { Smartphone, Wallet } from "lucide-react";
 
 export default function Funds() {
   const [d, setD] = useState(null);
-  useEffect(() => { api.get("/dashboard").then((r) => setD(r.data)); }, []);
+  useEffect(() => { api.get("/dashboard").then((r) => setD(r.data)).catch(() => setD(null)); }, []);
   if (!d) return <Page><div className="text-muted-foreground">Loading…</div></Page>;
 
   return (

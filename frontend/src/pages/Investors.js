@@ -13,7 +13,7 @@ export default function Investors() {
   const [form, setForm] = useState(blank);
   const [editId, setEditId] = useState(null);
 
-  const load = () => api.get("/investors").then((r) => setRows(r.data));
+  const load = () => api.get("/investors").then((r) => setRows(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const save = async () => {

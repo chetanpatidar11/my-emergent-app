@@ -13,7 +13,7 @@ export default function Banks() {
   const [balModal, setBalModal] = useState(null);
   const [balOp, setBalOp] = useState({ operation: "ADD", amount: 0 });
 
-  const load = () => Promise.all([api.get("/banks"), api.get("/investors")]).then(([b, i]) => { setRows(b.data); setInvestors(i.data); });
+  const load = () => Promise.all([api.get("/banks"), api.get("/investors")]).then(([b, i]) => { setRows(b.data); setInvestors(i.data); }).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const blank = () => ({

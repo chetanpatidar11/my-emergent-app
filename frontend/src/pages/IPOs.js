@@ -12,7 +12,7 @@ export default function IPOs() {
   const [tab, setTab] = useState("OPEN");
   const [busy, setBusy] = useState(false);
 
-  const load = () => api.get("/ipos").then((r) => setRows(r.data));
+  const load = () => api.get("/ipos").then((r) => setRows(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const refresh = async () => {

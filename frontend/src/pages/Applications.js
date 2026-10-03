@@ -9,7 +9,7 @@ const ALLOT = { AWAITING: "muted", ALLOTTED: "green", NOT_ALLOTTED: "red", REFUN
 
 export default function Applications() {
   const [rows, setRows] = useState([]);
-  const load = () => api.get("/applications").then((r) => setRows(r.data));
+  const load = () => api.get("/applications").then((r) => setRows(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const setStatus = async (id, field, value) => {

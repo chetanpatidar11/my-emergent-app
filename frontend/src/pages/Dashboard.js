@@ -16,7 +16,7 @@ const Metric = ({ icon: Icon, label, value, tone = "text-white", testid }) => (
 
 export default function Dashboard() {
   const [d, setD] = useState(null);
-  useEffect(() => { api.get("/dashboard").then((r) => setD(r.data)); }, []);
+  useEffect(() => { api.get("/dashboard").then((r) => setD(r.data)).catch(() => setD(null)); }, []);
   if (!d) return <Page><div className="text-muted-foreground">Loading…</div></Page>;
 
   return (

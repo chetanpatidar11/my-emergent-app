@@ -5,6 +5,22 @@ export const API = `${BACKEND_URL}/api`;
 
 export const api = axios.create({ baseURL: API, withCredentials: true });
 
+// Never let an API rejection become an unhandled promise rejection.
+// 401 on a non-auth route just means the session is gone — redirect to login.
+api.interceptors.response.use(
+  (r) => r,
+  (error) => {
+    const url = error?.config?.url || "";
+    const status = error?.response?.status;
+    if (status === 401 && !url.includes("/auth/")) {
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        window.location.assign("/login");
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export function errMsg(detail) {
   if (detail == null) return "Something went wrong.";
   if (typeof detail === "string") return detail;
