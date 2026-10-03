@@ -5,11 +5,13 @@ import { TrendingUp, TrendingDown, Calendar, RefreshCw, Activity } from "lucide-
 import { toast } from "sonner";
 
 const TABS = [["OPEN", "Open"], ["UPCOMING", "Upcoming"], ["CLOSED", "Closed"], ["LISTED", "Listed"]];
+const TYPES = [["ALL", "All"], ["MAINBOARD", "Mainboard"], ["SME", "SME"]];
 const fmt = (d) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "—");
 
 export default function IPOs() {
   const [rows, setRows] = useState([]);
   const [tab, setTab] = useState("OPEN");
+  const [type, setType] = useState("ALL");
   const [busy, setBusy] = useState(false);
 
   const load = () => api.get("/ipos").then((r) => setRows(r.data)).catch(() => {});
@@ -26,7 +28,10 @@ export default function IPOs() {
     } finally { setBusy(false); }
   };
 
-  const list = rows.filter((r) => r.status === tab);
+  const matchType = (r) => type === "ALL" || r.issue_type === type;
+  const statusCount = (s) => rows.filter((r) => r.status === s && matchType(r)).length;
+  const typeCount = (t) => rows.filter((r) => r.status === tab && (t === "ALL" || r.issue_type === t)).length;
+  const list = rows.filter((r) => r.status === tab && matchType(r));
   const isLive = rows.some((r) => r.source === "investorgain");
   const updated = rows.find((r) => r.updated_on)?.updated_on;
 
@@ -50,17 +55,27 @@ export default function IPOs() {
         {updated && <span className="text-muted-foreground tabnum">· GMP updated {updated}</span>}
       </div>
 
-      <div className="flex gap-2 mb-5 flex-wrap" data-testid="ipo-tabs">
+      <div className="flex gap-2 mb-3 flex-wrap" data-testid="ipo-tabs">
         {TABS.map(([v, l]) => (
           <button key={v} data-testid={`ipo-tab-${v.toLowerCase()}`} onClick={() => setTab(v)}
             className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === v ? "bg-primary text-primary-foreground" : "bg-white/5 text-muted-foreground hover:text-white"}`}>
-            {l} <span className="opacity-70">({rows.filter((r) => r.status === v).length})</span>
+            {l} <span className="opacity-70">({statusCount(v)})</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 mb-5 flex-wrap" data-testid="ipo-type-filter">
+        <span className="text-[11px] text-muted-foreground uppercase tracking-wide mr-1">Type</span>
+        {TYPES.map(([v, l]) => (
+          <button key={v} data-testid={`ipo-type-${v.toLowerCase()}`} onClick={() => setType(v)}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${type === v ? "bg-accent/15 border-accent text-accent" : "bg-transparent border-white/10 text-muted-foreground hover:text-white hover:border-white/25"}`}>
+            {l} <span className="opacity-70">({typeCount(v)})</span>
           </button>
         ))}
       </div>
 
       {list.length === 0 ? (
-        <Card className="text-center py-14 text-muted-foreground">No {tab.toLowerCase()} IPOs.</Card>
+        <Card className="text-center py-14 text-muted-foreground">No {type !== "ALL" ? type.toLowerCase() + " " : ""}{tab.toLowerCase()} IPOs.</Card>
       ) : (
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4" data-testid="ipo-grid">
           {list.map((r) => {
