@@ -1,0 +1,24 @@
+{
+  "summary": "First-finish smoke test for LotNeeti IPO cross-UPI tool. Backend login/me/dashboard/ipos/investors all 200 OK with correct seeded data (admin, 2 investors, 2 banks, 3 UPIs, 8 IPOs, 2 applications). Frontend: login via demo-credentials-button works, dashboard shows all 8 KPIs with correct values (Total ₹4.50L, Blocked ₹2.28L, Available ₹2.22L, UPI Cap ₹15.00L, Investors 2, UPI Handles 3, Open IPOs 4, Applications 2), and all 7 nav pages (Dashboard, Investors, Banks & UPI, IPOs, Planner, Applications, Funds) load without errors. Critical data-testids present: add-investor-button, add-bank-upi-button, auto-allocate-button, export-excel-button. Funds page renders per-UPI usage gauges (count/5 and amount/₹5L) and per-bank balance/blocked/available correctly.",
+  "tested_scope": ["backend", "frontend", "auth", "integration"],
+  "passed": [
+    "POST /api/auth/login (admin@lotneeti.com) returns 200 and sets httpOnly cookie",
+    "GET /api/auth/me returns admin profile",
+    "GET /api/dashboard returns full KPI payload (totals, per_bank, counts)",
+    "GET /api/ipos returns 8 seeded IPOs with issuer_name, lower_price/upper_price, lot_size, open_date/close_date, status, gmp",
+    "GET /api/investors returns seeded investors with demat details",
+    "Login page: demo-credentials autofill + login-submit-button navigates to dashboard",
+    "Dashboard renders 8 KPI metric cards and Funds-by-Bank + Allotment widgets",
+    "Nav links (nav-ipo-list-link, nav-planner-link, nav-applications-link, nav-investors-link, nav-banks-upi-link, nav-funds-link) route to respective pages",
+    "IPOs page shows seeded issuers (Vayu Aerospace / VAYUAERO / MAINBOARD)",
+    "Planner page renders auto-allocate-button",
+    "Applications page renders export-excel-button",
+    "Funds page renders per-UPI gauges (1/5, ₹1,14,000 / ₹5.00 L) and per-bank balance/blocked/available"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "notes": "Deep flows deferred to full testing agent: investor/bank CRUD edit+delete, UPI add + fund adjust (ADD/REMOVE/SET), planner preview with cross-UPI indicators & capacity warnings, lock-plan commit path, applications mandate_status/allotment_status dropdown persistence, actual xlsx download content validation, new-user registration data-isolation. Backend smoke verified via curl using cookie auth (login response body returns user profile; JWT lives in httpOnly cookie as designed)."
+}
