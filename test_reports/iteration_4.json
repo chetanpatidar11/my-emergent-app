@@ -1,0 +1,22 @@
+{
+  "summary": "Tested LotNeeti IPO Premium accounts import/export feature end-to-end. Backend: 7/7 pytest cases pass (test_investors_import_export.py) — mixed-row import returns {created:3, skipped_duplicates:1, invalid:1, total_rows:5}, re-import returns {created:0, skipped_duplicates:4, invalid:1}, export produces xlsx with EXACT header [Name,PAN,Type,DPID,CLIENT ID,UPI ID,Account Number,Bank Name], unique PANs only, UPI ID preserved round-trip, unknown file type -> 400, missing PAN column -> 400, no-auth export -> 401. Frontend (Playwright on fresh user): Investors page loaded via data-testid=import-accounts-button/export-accounts-button, uploaded CSV via hidden data-testid=import-file-input, toast shows 'Imported 3 account(s) · 1 duplicate PAN skipped · 1 invalid', grid renders 3 cards with PANs ABBHR1134L / UITST1234F / UITST5678K, re-import toast shows 'Imported 0 account(s) · 4 duplicate PAN skipped · 1 invalid', Export button downloads DematAccounts.xlsx (5147 bytes). Planner page loads for imported users (no crash).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_investors_import_export.py",
+    "/app/test_reports/pytest/import_export.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Login via UI redirected to '/' instead of '/dashboard' in one run; not blocking (fallback via localStorage.token worked) but worth confirming the post-login redirect target in AuthContext.",
+    "Investors.import toast message is clear; consider also surfacing 'total_rows' from backend response (currently backend returns it but UI only uses created/skipped/invalid)."
+  ],
+  "updated_files": ["/app/backend/tests/test_investors_import_export.py"],
+  "success_rate": {"backend": "100% (7/7)", "frontend": "100%"},
+  "test_credentials": "admin@lotneeti.com / admin123 (not used for import tests; registered fresh users for deterministic counts).",
+  "seed_data_creation": "Fresh user registered per test module; imported 3 unique PANs (ABBHR1134L, UITST1234F, UITST5678K). No cleanup needed (isolated per user).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Import/export of IPO Premium accounts is fully verified. Backend endpoints: GET /api/investors/export (Bearer or cookie) returns DematAccounts.xlsx with 8-column header, unique PANs, UPI preserved. POST /api/investors/import accepts .xlsx/.csv multipart file, returns {created, skipped_duplicates, invalid, total_rows}. Frontend hidden file input data-testid=import-file-input works via Playwright set_input_files; toast via sonner is detectable via '[data-sonner-toast]' selector. Reusable tests at /app/backend/tests/test_investors_import_export.py.",
+  "rca of the issue": "N/A — feature works as specified."
+}
