@@ -12,15 +12,26 @@ export default function Applications() {
   const [sel, setSel] = useState(new Set());
   const [bulkMand, setBulkMand] = useState("");
   const [bulkAllot, setBulkAllot] = useState("");
+  const [ipoFilter, setIpoFilter] = useState("ALL");
 
   const load = () => api.get("/applications").then((r) => setRows(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
 
-  const selected = useMemo(() => rows.filter((r) => sel.has(r.id)), [rows, sel]);
-  const allChecked = rows.length > 0 && sel.size === rows.length;
+  const ipoOptions = useMemo(() => {
+    const m = new Map();
+    rows.forEach((r) => { if (!m.has(r.ipo_id)) m.set(r.ipo_id, r.ipo_name); });
+    return [...m.entries()].map(([id, name]) => ({ id, name }));
+  }, [rows]);
+  const visibleRows = ipoFilter === "ALL" ? rows : rows.filter((r) => r.ipo_id === ipoFilter);
+  const allChecked = visibleRows.length > 0 && visibleRows.every((r) => sel.has(r.id));
 
   const toggle = (id) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const toggleAll = () => setSel(allChecked ? new Set() : new Set(rows.map((r) => r.id)));
+  const toggleAll = () => setSel((s) => {
+    const n = new Set(s);
+    if (allChecked) visibleRows.forEach((r) => n.delete(r.id));
+    else visibleRows.forEach((r) => n.add(r.id));
+    return n;
+  });
   const clearSel = () => setSel(new Set());
 
   const setStatus = async (id, field, value) => {
@@ -51,19 +62,31 @@ export default function Applications() {
 
   const exportXlsx = async () => {
     try {
-      const res = await api.get("/applications/export", { responseType: "blob" });
+      const params = ipoFilter !== "ALL" ? { ipo_id: ipoFilter } : {};
+      const res = await api.get("/applications/export", { responseType: "blob", params });
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
-      a.href = url; a.download = "ipo_applications.xlsx"; a.click();
+      a.href = url; a.download = "ipo_accounts.xlsx"; a.click();
       URL.revokeObjectURL(url);
-      toast.success("Excel downloaded — bulk upload it to IPO Premium");
+      toast.success("Accounts Excel downloaded — bulk upload it to IPO Premium");
     } catch { toast.error("Export failed"); }
   };
 
   return (
     <Page>
-      <PageHeader title="Applications Tracker" subtitle="Select rows to bulk-update mandate / allotment or delete · export Excel for IPO Premium"
-        action={<Btn data-testid="export-excel-button" variant="accent" disabled={!rows.length} onClick={exportXlsx}><Download className="h-4 w-4" /> Export Excel</Btn>} />
+      <PageHeader title="Applications Tracker" subtitle="Filter by IPO, bulk-update status, and export the selected IPO's accounts in IPO Premium format"
+        action={
+          <div className="flex gap-2 flex-wrap items-center">
+            <select data-testid="ipo-filter-select" value={ipoFilter} onChange={(e) => setIpoFilter(e.target.value)}
+              className="bg-background border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary max-w-[220px]">
+              <option value="ALL">All IPOs ({rows.length})</option>
+              {ipoOptions.map((o) => (
+                <option key={o.id} value={o.id}>{o.name} ({rows.filter((r) => r.ipo_id === o.id).length})</option>
+              ))}
+            </select>
+            <Btn data-testid="export-excel-button" variant="accent" disabled={!visibleRows.length} onClick={exportXlsx}><Download className="h-4 w-4" /> Export Excel</Btn>
+          </div>
+        } />
 
       {rows.length === 0 ? (
         <Card className="text-center py-14 text-muted-foreground"><ListChecks className="h-10 w-10 mx-auto mb-3" />No applications yet. Create a plan in the Planner.</Card>
@@ -110,7 +133,7 @@ export default function Applications() {
                 <th className="px-3">Mandate</th><th className="px-3">Allotment</th><th className="px-3"></th>
               </tr></thead>
               <tbody>
-                {rows.map((r) => (
+                {visibleRows.map((r) => (
                   <tr key={r.id} className={`border-b border-white/5 hover:bg-white/5 ${sel.has(r.id) ? "bg-primary/5" : ""}`} data-testid={`application-row-${r.id}`}>
                     <td className="pl-4 pr-2"><input type="checkbox" checked={sel.has(r.id)} onChange={() => toggle(r.id)} data-testid={`select-app-${r.id}`} /></td>
                     <td className="py-2.5 px-3 text-white">{r.ipo_name}</td>

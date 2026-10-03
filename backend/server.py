@@ -660,23 +660,32 @@ EXPORT_COLUMNS = ["IPO ID", "IPO Name", "Applicant ID", "Applicant Name", "PAN",
 
 
 @api.get("/applications/export")
-async def export_applications(request: Request):
+async def export_applications(request: Request, ipo_id: str = None):
     user = await get_current_user(request)
-    rows = await db.applications.find({"user_id": user["_id"]}, {"_id": 0}).to_list(5000)
+    q = {"user_id": user["_id"]}
+    if ipo_id:
+        q["ipo_id"] = ipo_id
+    rows = await db.applications.find(q, {"_id": 0}).to_list(5000)
     wb = Workbook()
     ws = wb.active
-    ws.title = "IPO Applications"
-    ws.append(EXPORT_COLUMNS)
-    for i, r in enumerate(rows, 1):
-        ws.append([r["ipo_id"], r["ipo_name"], str(i), r["investor_name"], r["pan"],
-                   r["category"], r["lots"], f"{r['amount']:.2f}", r["depository"],
-                   r["dp_id"], r["client_id"], r["bank_name"], r["bank_account"], r["upi_handle"]])
+    ws.title = "Demat Accounts"
+    ws.append(ACCOUNT_COLUMNS)
+    seen = set()
+    for r in rows:
+        pan = (r.get("pan") or "").upper().strip()
+        if not pan or pan in seen:
+            continue
+        seen.add(pan)
+        ws.append([r.get("investor_name", ""), pan, r.get("depository", "CDSL"),
+                   r.get("dp_id", ""), r.get("client_id", ""), r.get("upi_handle", ""),
+                   r.get("bank_account", ""), r.get("bank_name", "")])
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
+    fname = "ipo_accounts.xlsx" if not ipo_id else f"ipo_accounts_{ipo_id}.xlsx"
     return StreamingResponse(
         buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=ipo_applications.xlsx"})
+        headers={"Content-Disposition": f"attachment; filename={fname}"})
 
 
 # ---------- dashboard / funds ----------
