@@ -1,0 +1,22 @@
+{
+  "summary": "Verified bug fix for 'logged in then suddenly logged out' in LotNeeti. Backend: 6/6 pytest cases passed — /api/auth/login and /api/auth/register return a 'token' field, Authorization: Bearer <token> is accepted by /api/auth/me and all protected endpoints (/dashboard, /investors, /banks, /ipos, /applications), cookie-only path still works. Frontend (Playwright): (1) demo-credentials login lands on authenticated layout and localStorage.token is set (length 209). (2) 3 reloads keep user logged in. (3) CRITICAL — cleared ALL browser cookies (4 -> 0), kept localStorage, reloaded: user stayed on dashboard and GET /api/auth/me returned 200 (session persists on Bearer alone). (4) Navigated across all 7 pages (Investors, Banks, IPOs, Planner, Applications, Funds, Dashboard) — no logout, no 401 bounce. (5) Logout removed localStorage.token and redirected to /login; reloading /applications stayed on /login. 0 pageerrors throughout.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_auth_bearer.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AuthContext.logout clears localStorage BEFORE calling /auth/logout, so the backend logout call goes out without the Bearer header (interceptor reads from localStorage). Cookie clearing on the server still happens via Set-Cookie, so it works, but order could be: await api.post('/auth/logout') first, then remove token.",
+    "On first page load for logged-out users, AuthContext fires GET /api/auth/me which returns 401 and shows up as a red '401 ()' line in devtools. Harmless (caught), but could be suppressed by only calling /auth/me when localStorage.token exists."
+  ],
+  "updated_files": ["/app/backend/tests/test_auth_bearer.py"],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "100%"},
+  "test_credentials": "admin@lotneeti.com / admin123 (seeded, verified)",
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Bearer-token-in-localStorage auth fix is fully verified end-to-end. Backend accepts cookie OR Authorization header via get_current_user in /app/backend/server.py. Frontend attaches Bearer in /app/frontend/src/lib/api.js request interceptor; AuthContext persists data.token to localStorage on login/register, removes on logout. The CRITICAL cookie-cleared reload scenario was independently confirmed with Playwright: ctx.clear_cookies() left 0 cookies, token stayed in localStorage, reload resulted in /auth/me -> 200 and the user remained authenticated.",
+  "rca of the issue": "Original bug: auth depended solely on SameSite=None;Secure httpOnly cookie which some browsers (behind Cloudflare preview) silently drop, causing subsequent requests to 401 and the axios interceptor to redirect to /login — appearing as a sudden logout. Fix (already applied by main agent): backend already supported Bearer; main agent now also returns 'token' in login/register responses, and the frontend stores it in localStorage and attaches it on every request. Session now survives cookie loss entirely."
+}
