@@ -613,6 +613,30 @@ async def list_applications(user: dict = Depends(get_current_user)):
     return rows
 
 
+@api.put("/applications/bulk/status")
+async def bulk_update_status(body: dict, user: dict = Depends(get_current_user)):
+    ids = body.get("ids") or []
+    upd = {}
+    if body.get("mandate_status"):
+        upd["mandate_status"] = body["mandate_status"]
+    if body.get("allotment_status"):
+        upd["allotment_status"] = body["allotment_status"]
+    if not ids or not upd:
+        raise HTTPException(400, "Provide ids and at least one status to update.")
+    r = await db.applications.update_many(
+        {"id": {"$in": ids}, "user_id": user["_id"]}, {"$set": upd})
+    return {"updated": r.modified_count}
+
+
+@api.post("/applications/bulk/delete")
+async def bulk_delete(body: dict, user: dict = Depends(get_current_user)):
+    ids = body.get("ids") or []
+    if not ids:
+        raise HTTPException(400, "No applications selected.")
+    r = await db.applications.delete_many({"id": {"$in": ids}, "user_id": user["_id"]})
+    return {"deleted": r.deleted_count}
+
+
 @api.put("/applications/{aid}/status")
 async def update_app_status(aid: str, body: dict, user: dict = Depends(get_current_user)):
     upd = {}
