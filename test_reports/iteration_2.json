@@ -1,0 +1,28 @@
+{
+  "summary": "Bug-fix verification for 'Unhandled rejection 401' in LotNeeti. Ran Playwright flow capturing pageerror + console across all required scenarios: (a) logged-out visit to '/' cleanly redirects to /login, (b) demo-credentials login works, (c) navigated Dashboard/Investors/Banks/IPOs/Planner/Applications/Funds, (d) Logout then reload of protected /applications redirects to /login. Also exercised Refresh Live GMP, auto-allocate, lock-plan, and Excel export. RESULT: 0 pageerrors, 0 unhandled promise rejections, 0 uncaught console messages across the entire session. The only console entries are expected network-level '401' resource warnings for pre-login /api/auth/me (fully swallowed by the axios interceptor + .catch handlers) — these are browser-level log lines, not JS runtime errors or unhandled rejections. Excel download succeeded (ipo_applications.xlsx).",
+  "tested_scope": ["frontend", "auth-interceptor", "navigation", "integration"],
+  "passed": [
+    "Logged-out GET / redirects to /login with 0 pageerrors / 0 unhandled rejections",
+    "Login via demo-credentials-button + login-submit-button navigates to dashboard",
+    "All 7 nav pages (Dashboard, Investors, Banks, IPOs, Planner, Applications, Funds) load without JS errors",
+    "IPOs page Refresh Live GMP button triggers InvestorGain sync without unhandled rejection",
+    "Planner auto-allocate-button runs preview; lock-plan-button clickable",
+    "Applications export-excel-button downloads ipo_applications.xlsx",
+    "Logout + reload of protected /applications redirects to /login (global 401 interceptor working)",
+    "Zero pageerrors and zero 'Unhandled'/'Uncaught' console entries across entire flow"
+  ],
+  "failed": [],
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Network-level '401 ()' lines still appear in browser console for /api/auth/me on logged-out load. They are harmless (caught) but could be suppressed by probing session via a dedicated /auth/session endpoint or by not calling /auth/me when no session cookie indicator exists, to keep devtools clean."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped per request)", "frontend": "100%"},
+  "test_credentials": "admin@lotneeti.com / admin123 (seeded, verified)",
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Bug 'Unhandled rejection 401' is fully resolved. Axios response interceptor in /app/frontend/src/lib/api.js correctly redirects to /login on 401 for non-auth routes; AuthContext /auth/me has .catch; all page fetches have .catch. If re-testing, watch pageerror + console 'Unhandled/Uncaught' only — plain '401 ()' resource log lines are expected network traces, not errors."
+}
