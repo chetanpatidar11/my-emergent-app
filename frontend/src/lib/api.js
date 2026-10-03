@@ -5,14 +5,23 @@ export const API = `${BACKEND_URL}/api`;
 
 export const api = axios.create({ baseURL: API, withCredentials: true });
 
+// Primary auth: Bearer token from localStorage (reliable across browsers where the
+// SameSite=None session cookie behind the CDN gets dropped). Cookie stays as backup.
+api.interceptors.request.use((config) => {
+  const t = localStorage.getItem("token");
+  if (t) config.headers.Authorization = `Bearer ${t}`;
+  return config;
+});
+
 // Never let an API rejection become an unhandled promise rejection.
-// 401 on a non-auth route just means the session is gone — redirect to login.
+// 401 on a non-auth route means the session is truly gone — clear token and go to login.
 api.interceptors.response.use(
   (r) => r,
   (error) => {
     const url = error?.config?.url || "";
     const status = error?.response?.status;
     if (status === 401 && !url.includes("/auth/")) {
+      localStorage.removeItem("token");
       if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
         window.location.assign("/login");
       }

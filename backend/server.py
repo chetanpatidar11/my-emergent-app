@@ -158,8 +158,9 @@ async def register(body: AuthIn, response: Response):
            "created_at": datetime.now(timezone.utc).isoformat()}
     res = await db.users.insert_one(doc)
     uid = str(res.inserted_id)
-    set_auth_cookie(response, create_access_token(uid, email))
-    return {"id": uid, "email": email, "name": doc["name"], "role": "user"}
+    token = create_access_token(uid, email)
+    set_auth_cookie(response, token)
+    return {"id": uid, "email": email, "name": doc["name"], "role": "user", "token": token}
 
 
 @api.post("/auth/login")
@@ -169,8 +170,9 @@ async def login(body: AuthIn, response: Response):
     if not user or not verify_password(body.password, user["password_hash"]):
         raise HTTPException(401, "Invalid email or password")
     uid = str(user["_id"])
-    set_auth_cookie(response, create_access_token(uid, email))
-    return {"id": uid, "email": email, "name": user.get("name"), "role": user.get("role")}
+    token = create_access_token(uid, email)
+    set_auth_cookie(response, token)
+    return {"id": uid, "email": email, "name": user.get("name"), "role": user.get("role"), "token": token}
 
 
 @api.post("/auth/logout")

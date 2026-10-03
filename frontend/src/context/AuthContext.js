@@ -16,14 +16,17 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const { data } = await api.post("/auth/login", { email, password });
+    if (data.token) localStorage.setItem("token", data.token);
     setUser(data);
   };
   const register = async (name, email, password) => {
     const { data } = await api.post("/auth/register", { name, email, password });
+    if (data.token) localStorage.setItem("token", data.token);
     setUser(data);
   };
   const logout = async () => {
-    await api.post("/auth/logout");
+    localStorage.removeItem("token");
+    try { await api.post("/auth/logout"); } catch (e) { /* ignore */ }
     setUser(false);
   };
 
