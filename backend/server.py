@@ -17,13 +17,14 @@ import bcrypt
 import jwt
 import requests
 from bson import ObjectId
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File
 from fastapi.responses import StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional
 from openpyxl import Workbook
+from openpyxl import load_workbook
 
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
@@ -218,6 +219,129 @@ async def update_investor(iid: str, body: InvestorIn, user: dict = Depends(get_c
 async def delete_investor(iid: str, user: dict = Depends(get_current_user)):
     await db.investors.delete_one({"id": iid, "user_id": user["_id"]})
     return {"ok": True}
+
+
+# IPO Premium accounts template — exact columns of the sample file.
+ACCOUNT_COLUMNS = ["Name", "PAN", "Type", "DPID", "CLIENT ID", "UPI ID", "Account Number", "Bank Name"]
+
+
+async def _investor_upi_bank(uid: str):
+    """Map investor_id -> (upi_handle, account_number, bank_name) from their banks."""
+    banks = await db.banks.find({"user_id": uid}, {"_id": 0}).to_list(500)
+    out = {}
+    for b in banks:
+        for u in b.get("upis", []):
+            hid = u.get("holder_investor_id")
+            if hid and hid not in out:
+                out[hid] = (u.get("handle", ""), b.get("account_number", ""), b.get("bank_name", ""))
+        own = b.get("owner_investor_id")
+        if own and own not in out:
+            out[own] = ("", b.get("account_number", ""), b.get("bank_name", ""))
+    return out
+
+
+@api.get("/investors/export")
+async def export_investors(request: Request):
+    """Download demat accounts in the exact IPO Premium import format (unique PAN)."""
+    user = await get_current_user(request)
+    rows = await db.investors.find({"user_id": user["_id"]}, {"_id": 0}).to_list(500)
+    upi_map = await _investor_upi_bank(user["_id"])
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Demat Accounts"
+    ws.append(ACCOUNT_COLUMNS)
+    seen = set()
+    for r in rows:
+        pan = (r.get("pan") or "").upper().strip()
+        if not pan or pan in seen:
+            continue
+        seen.add(pan)
+        d = (r.get("demats") or [{}])[0]
+        upi, acct, bank = upi_map.get(r["id"], ("", "", ""))
+        upi = upi or r.get("import_upi", "")
+        acct = acct or r.get("import_account", "")
+        bank = bank or r.get("import_bank", "")
+        ws.append([r.get("name", ""), pan, d.get("depository", "CDSL"), d.get("dp_id", ""),
+                   d.get("client_id", ""), upi, acct, bank])
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return StreamingResponse(
+        buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=DematAccounts.xlsx"})
+
+
+def _norm_header(h):
+    return str(h or "").strip().upper().replace("_", " ").replace("-", " ")
+
+
+@api.post("/investors/import")
+async def import_investors(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    """Bulk-add accounts from an .xlsx/.csv in the sample format. Only unique PANs are imported."""
+    uid = user["_id"]
+    name = (file.filename or "").lower()
+    raw = await file.read()
+    rows = []
+    if name.endswith(".csv"):
+        import csv
+        text = raw.decode("utf-8-sig", errors="ignore")
+        rows = [list(r) for r in csv.reader(io.StringIO(text))]
+    elif name.endswith(".xlsx") or name.endswith(".xlsm"):
+        wb = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+        ws = wb.active
+        rows = [[c for c in r] for r in ws.iter_rows(values_only=True)]
+    else:
+        raise HTTPException(400, "Please upload a .xlsx or .csv file (export one from here as a template).")
+
+    rows = [r for r in rows if any(str(c).strip() for c in r if c is not None)]
+    if not rows:
+        raise HTTPException(400, "The file is empty.")
+
+    header = [_norm_header(c) for c in rows[0]]
+    idx = {h: i for i, h in enumerate(header)}
+    if "PAN" not in idx:
+        raise HTTPException(400, "Missing required 'PAN' column.")
+
+    def cell(row, key):
+        i = idx.get(key)
+        if i is None or i >= len(row):
+            return ""
+        v = row[i]
+        return "" if v is None else str(v).strip()
+
+    existing = {(i.get("pan") or "").upper() for i in
+                await db.investors.find({"user_id": uid}, {"_id": 0, "pan": 1}).to_list(1000)}
+    max_priority = await db.investors.count_documents({"user_id": uid})
+
+    created, skipped, invalid, seen = 0, 0, 0, set()
+    new_docs = []
+    for row in rows[1:]:
+        pan = cell(row, "PAN").upper()
+        iname = cell(row, "NAME")
+        if not pan or not iname:
+            invalid += 1
+            continue
+        if pan in existing or pan in seen:
+            skipped += 1
+            continue
+        seen.add(pan)
+        max_priority += 1
+        new_docs.append({
+            "id": str(uuid.uuid4()), "user_id": uid, "name": iname, "pan": pan,
+            "priority": max_priority, "category_default": "RETAIL", "active": True,
+            "demats": [{"depository": (cell(row, "TYPE") or "CDSL").upper(),
+                        "dp_id": cell(row, "DPID"), "client_id": cell(row, "CLIENT ID"),
+                        "broker": ""}],
+            "import_upi": cell(row, "UPI ID"), "import_bank": cell(row, "BANK NAME"),
+            "import_account": cell(row, "ACCOUNT NUMBER"),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        created += 1
+
+    if new_docs:
+        await db.investors.insert_many([dict(d) for d in new_docs])
+    return {"created": created, "skipped_duplicates": skipped, "invalid": invalid,
+            "total_rows": len(rows) - 1}
 
 
 # ---------- banks ----------

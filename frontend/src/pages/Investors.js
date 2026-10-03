@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api, errMsg } from "@/lib/api";
 import { Page, PageHeader, Card, Btn, Field, Select, Badge, Modal } from "@/components/kit";
-import { Plus, Pencil, Trash2, UserPlus } from "lucide-react";
+import { Plus, Pencil, Trash2, UserPlus, Upload, Download } from "lucide-react";
 import { toast } from "sonner";
 
 const blank = { name: "", pan: "", priority: 1, category_default: "RETAIL", active: true,
@@ -10,6 +10,7 @@ const blank = { name: "", pan: "", priority: 1, category_default: "RETAIL", acti
 export default function Investors() {
   const [rows, setRows] = useState([]);
   const [open, setOpen] = useState(false);
+  const fileRef = useRef(null);
   const [form, setForm] = useState(blank);
   const [editId, setEditId] = useState(null);
 
@@ -29,15 +30,46 @@ export default function Investors() {
   const dm = form.demats[0];
   const setDm = (k, v) => setForm({ ...form, demats: [{ ...dm, [k]: v }] });
 
+  const exportFile = async () => {
+    try {
+      const res = await api.get("/investors/export", { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url; a.download = "DematAccounts.xlsx"; a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Accounts exported — this file imports into IPO Premium");
+    } catch { toast.error("Export failed"); }
+  };
+
+  const importFile = async (e) => {
+    const f = e.target.files?.[0];
+    if (f) { fileRef.current.value = ""; }
+    if (!f) return;
+    const fd = new FormData();
+    fd.append("file", f);
+    try {
+      const { data } = await api.post("/investors/import", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      toast.success(`Imported ${data.created} account(s) · ${data.skipped_duplicates} duplicate PAN skipped${data.invalid ? ` · ${data.invalid} invalid` : ""}`);
+      load();
+    } catch (err) { toast.error(errMsg(err.response?.data?.detail) || "Import failed"); }
+  };
+
   return (
     <Page>
-      <PageHeader title="Investor Profiles" subtitle="Family & friends — PAN, demat accounts and priority"
-        action={<Btn data-testid="add-investor-button" onClick={() => { setForm(blank); setEditId(null); setOpen(true); }}><Plus className="h-4 w-4" /> Add Investor</Btn>} />
+      <input ref={fileRef} type="file" accept=".xlsx,.csv" className="hidden" data-testid="import-file-input" onChange={importFile} />
+      <PageHeader title="Investor Profiles" subtitle="Family & friends — unique PAN, demat accounts and priority"
+        action={
+          <div className="flex gap-2 flex-wrap">
+            <Btn variant="ghost" data-testid="import-accounts-button" onClick={() => fileRef.current?.click()}><Upload className="h-4 w-4" /> Import</Btn>
+            <Btn variant="accent" data-testid="export-accounts-button" disabled={!rows.length} onClick={exportFile}><Download className="h-4 w-4" /> Export</Btn>
+            <Btn data-testid="add-investor-button" onClick={() => { setForm(blank); setEditId(null); setOpen(true); }}><Plus className="h-4 w-4" /> Add Investor</Btn>
+          </div>
+        } />
 
       {rows.length === 0 ? (
         <Card className="text-center py-14">
           <UserPlus className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground">No investors yet. Add family/friends to start planning.</p>
+          <p className="text-muted-foreground">No investors yet. Add one, or <button onClick={() => fileRef.current?.click()} className="text-primary hover:underline">import the IPO Premium accounts file</button>.</p>
         </Card>
       ) : (
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4" data-testid="investors-grid">
